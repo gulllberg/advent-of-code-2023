@@ -1,0 +1,3 @@
+{:deps
+ {org.clojure/clojure {:mvn/version "1.11.1"}
+  ysera/ysera {:mvn/version "2.0.2"}}}
