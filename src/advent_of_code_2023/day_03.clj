@@ -18,9 +18,11 @@
 
 (defn parse-number
   {:test (fn []
+           (is= (parse-number []) nil)
            (is= (parse-number ["1" "2" "3"]) 123))}
   [digits]
-  (read-string (apply str digits)))
+  (when-not (empty? digits)
+    (read-string (apply str digits))))
 
 (defn complete-number
   {:test (fn []
@@ -92,17 +94,96 @@
                  (inc i)
                  sum))))))
 
+(defn get-numbers-in-row
+  {:test (fn []
+           (is= (get-numbers-in-row (clojure.string/split "..12." #"")) {2 12
+                                                                         3 12})
+           (is= (get-numbers-in-row (clojure.string/split "..1$2.#" #"")) {2 1
+                                                                           4 2}))}
+  [row]
+  (let [[res digits indexes] (reduce (fn [[a digits indexes] i]
+                                       (let [digit (re-find #"\d" (nth row i))]
+                                         (if digit
+                                           [a (conj digits digit) (conj indexes i)]
+                                           (let [number (parse-number digits)]
+                                             (if-not number
+                                               [a [] []]
+                                               [(reduce (fn [a i]
+                                                          (assoc a i number))
+                                                        a
+                                                        indexes)
+                                                [] []])))))
+                                     [{} [] []]
+                                     (range (count row)))
+        number (parse-number digits)]
+    (if-not number
+      res
+      (reduce (fn [a i]
+                (assoc a i number))
+              res
+              indexes))))
+
+(defn complete-gear
+  [j numbers-prev-row numbers-this-row numbers-next-row]
+  (let [number-left (get numbers-this-row (dec j))
+        number-right (get numbers-this-row (inc j))
+        number-up (get numbers-prev-row j)
+        number-down (get numbers-next-row j)
+        number-up-left (when-not number-up (get numbers-prev-row (dec j)))
+        number-up-right (when-not number-up (get numbers-prev-row (inc j)))
+        number-down-left (when-not number-down (get numbers-next-row (dec j)))
+        number-down-right (when-not number-down (get numbers-next-row (inc j)))
+        gear-numbers (filter identity [number-left number-right number-up number-down number-up-left number-up-right number-down-left number-down-right])]
+    (if (= (count gear-numbers) 2)
+      (* (first gear-numbers) (second gear-numbers))
+      0)))
+
 (defn solve-b
   {:test (fn []
-           (is= (solve-b test-input) 2286))}
+           (is= (solve-b test-input) 467835))}
   [input]
-  2286)
+  (let [rows (map (fn [line]
+                    (clojure.string/split line #""))
+                  (clojure.string/split-lines input))]
+    (loop [numbers-prev-row {}
+           numbers-this-row (get-numbers-in-row (first rows))
+           numbers-next-row (get-numbers-in-row (second rows))
+           i 0
+           sum 0]
+      (let [row (nth rows i)
+            sum (loop [j 0
+                       sum sum]
+                  (if
+                    ;; Finished row
+                    (>= j (count row))
+                    sum
+
+                    (let [char (if (< j (count row)) (nth row j) nil)]
+                      (if
+                        ;; Got a gear
+                        (re-find #"\*" char)
+                        (recur (inc j) (+ sum (complete-gear j numbers-prev-row numbers-this-row numbers-next-row)))
+
+                        ;; Not a gear
+                        (recur (inc j) sum)))))]
+        (if
+          ;; Was last row
+          (= i (dec (count rows)))
+          sum
+
+          (recur numbers-this-row
+                 numbers-next-row
+                 (if (= i (- (count rows) 2))
+                   {}
+                   (get-numbers-in-row (nth rows (+ i 2))))
+                 (inc i)
+                 sum))))))
 
 (comment
   (solve-a input)
   ;; 535078
 
   (solve-b input)
-  ;;
+  ;; 75312571
   )
 
