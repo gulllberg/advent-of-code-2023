@@ -12,12 +12,15 @@
       (when (<= src x (+ src (dec len)))
         (+ x (- dest src))))))
 
-(defn get-all-mapping-fns
+(defn combine-mapping-fns
   [almanac]
   (let [parts (clojure.string/split-lines almanac)
         fns (mapv get-mapping-fn (rest parts))]
     (fn [x]
-      (some identity ((apply juxt (conj fns identity)) x)))))
+      (or (some identity (map (fn [mapping-fn]
+                                (mapping-fn x))
+                              fns))
+          x))))
 
 (defn solve-a
   {:test (fn []
@@ -26,7 +29,7 @@
   (let [almanac (clojure.string/split input #"\n\n")
         seeds (->> (re-seq #"\d+" (first almanac))
                    (map read-string))
-        mapping-fns (map get-all-mapping-fns (rest almanac))]
+        mapping-fns (map combine-mapping-fns (rest almanac))]
     (->> (map (fn [seed]
                 (reduce (fn [a mapping-fn]
                           (mapping-fn a))
@@ -57,7 +60,7 @@
         seed-partitions (->> (re-seq #"\d+" (first almanac))
                              (map read-string)
                              (partition 2))
-        mapping-fns (map get-all-mapping-fns (rest almanac))]
+        mapping-fns (map combine-mapping-fns (rest almanac))]
     (println "number of seed partitions")
     (println (count seed-partitions))
     (reduce (fn [min-location seed-partition]
@@ -72,7 +75,9 @@
   (solve-a input)
   ;; 173706076
 
-  (solve-b input)
-  ;;
+  (time (solve-b input))
+  ;; 11611182
+  ;; "Elapsed time: 2.7138193503851E7 msecs"
+  ;; Oops...
   )
 
