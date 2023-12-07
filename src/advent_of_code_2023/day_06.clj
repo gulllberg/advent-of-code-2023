@@ -68,7 +68,7 @@
 ;d = t_acc * (t_lopp - t_acc)
 ;
 ;d > d_rekord
-;d >= d_rekord + 1
+;d = d_rekord + 1
 ;
 ;-t_acc^2 + t_lopp*t_acc = d_rekord + 1
 ;
