@@ -28,22 +28,23 @@
 
 (def card->value (zipmap [\2 \3 \4 \5 \6 \7 \8 \9 \T \J \Q \K \A] (range 2 15)))
 
-(defn compare-hands
+(defn get-compare-fn
   {:test (fn []
-           (is (neg? (compare-hands "32T3K" "T55J5")))
-           (is (pos? (compare-hands "KK677" "KTJJT"))))}
-  [hand1 hand2]
-  (let [score1 (get-score hand1)
-        score2 (get-score hand2)]
-    (if (not= score1 score2)
-      (- score1 score2)
-      (loop [[h1 & t1] hand1
-             [h2 & t2] hand2]
-        (let [v1 (card->value h1)
-              v2 (card->value h2)]
-          (if (= v1 v2)
-            (recur t1 t2)
-            (- v1 v2)))))))
+           (is (neg? ((get-compare-fn get-score card->value) "32T3K" "T55J5")))
+           (is (pos? ((get-compare-fn get-score card->value) "KK677" "KTJJT"))))}
+  [get-score card->value]
+  (fn [hand1 hand2]
+    (let [score1 (get-score hand1)
+          score2 (get-score hand2)]
+      (if (not= score1 score2)
+        (- score1 score2)
+        (loop [[h1 & t1] hand1
+               [h2 & t2] hand2]
+          (let [v1 (card->value h1)
+                v2 (card->value h2)]
+            (if (= v1 v2)
+              (recur t1 t2)
+              (- v1 v2))))))))
 
 (defn solve-a
   {:test (fn [] (is= (solve-a test-input) 6440))}
@@ -51,11 +52,9 @@
   (->> (clojure.string/split-lines input)
        (map (fn [r] (clojure.string/split r #" ")))
        (map (fn [[hand bid-as-sting]] {:hand hand :bid (read-string bid-as-sting)}))
-       (sort-by :hand compare-hands)
+       (sort-by :hand (get-compare-fn get-score card->value))
        (map-indexed (fn [i {bid :bid}] (* (inc i) bid)))
        (reduce +)))
-
-
 
 (defn get-score-2
   {:test (fn []
@@ -83,40 +82,23 @@
 
 (def card->value-2 (zipmap [\J \2 \3 \4 \5 \6 \7 \8 \9 \T \Q \K \A] (range 2 15)))
 
-(defn compare-hands-2
-  {:test (fn []
-           (is (neg? (compare-hands "32T3K" "T55J5")))
-           (is (pos? (compare-hands "KK677" "KTJJT"))))}
-  [hand1 hand2]
-  (let [score1 (get-score-2 hand1)
-        score2 (get-score-2 hand2)]
-    (if (not= score1 score2)
-      (- score1 score2)
-      (loop [[h1 & t1] hand1
-             [h2 & t2] hand2]
-        (let [v1 (card->value-2 h1)
-              v2 (card->value-2 h2)]
-          (if (= v1 v2)
-            (recur t1 t2)
-            (- v1 v2)))))))
-
 (defn solve-b
   {:test (fn [] (is= (solve-b test-input) 5905))}
   [input]
   (->> (clojure.string/split-lines input)
        (map (fn [r] (clojure.string/split r #" ")))
        (map (fn [[hand bid-as-sting]] {:hand hand :bid (read-string bid-as-sting)}))
-       (sort-by :hand compare-hands-2)
+       (sort-by :hand (get-compare-fn get-score-2 card->value-2))
        (map-indexed (fn [i {bid :bid}] (* (inc i) bid)))
        (reduce +)))
 
 (comment
   (time (solve-a input))
   ;; 248113761
-  ;; "Elapsed time: 221.448327 msecs"
+  ;; "Elapsed time: 19.037125 msecs"
 
   (time (solve-b input))
   ;; 246285222
-  ;; "Elapsed time: 208.896388 msecs"
+  ;; "Elapsed time: 21.611375 msecs"
   )
 
