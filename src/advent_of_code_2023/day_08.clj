@@ -59,6 +59,7 @@
                  (clojure.string/ends-with? k "Z")))
        (into #{})))
 
+;; Not really required it turns out
 (defn get-node-cycle
   [desert-map instructions node ends]
   (let [[cycle-start end] (find-exit desert-map instructions node ends)
@@ -75,12 +76,6 @@
     0
     (/ (abs (* a b)) (gcd a b))))
 
-(defn lcm-of-list [numbers]
-  (if (empty? numbers)
-    0
-    (let [common-divisor (reduce gcd numbers)]
-      (* common-divisor (reduce (fn [acc n] (lcm acc (/ n common-divisor))) 1 numbers)))))
-
 (defn solve-b
   {:test (fn [] (is= (solve-b test-input-2) 6))}
   [input]
@@ -92,7 +87,7 @@
                              ;; For all cycles the first occurrence is equal to the cycle length
                              (first (get-node-cycle desert-map left-right-instructions starting-node end-nodes)))
                            starting-nodes)]
-    (lcm-of-list cycle-lengths)))
+    (reduce lcm cycle-lengths)))
 
 (comment
   (time (solve-a input))
