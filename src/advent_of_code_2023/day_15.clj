@@ -7,11 +7,11 @@
 (defn holiday-ascii-string-helper
   [string]
   (reduce (fn [a c]
-            (as-> c $
-                  (int $)
-                  (+ a $)
-                  (* 17 $)
-                  (mod $ 256)))
+            (-> c
+                  (int)
+                  (+ a)
+                  (* 17)
+                  (mod 256)))
           0
           string))
 
