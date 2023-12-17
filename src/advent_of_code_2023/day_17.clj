@@ -1,5 +1,6 @@
 (ns advent-of-code-2023.day-17
-  (:require [ysera.test :refer [is= is is-not]]))
+  (:require [ysera.test :refer [is= is is-not]]
+            [clojure.data.priority-map :refer [priority-map]]))
 
 (def input (slurp "src/advent_of_code_2023/inputs/day17.txt"))
 (def test-input "2413432311323\n3215453535623\n3255245654254\n3446585845452\n4546657867536\n1438598798454\n4457876987766\n3637877979653\n4654967986887\n4564679986453\n1224686865563\n2546548887735\n4322674655533")
@@ -29,12 +30,6 @@
                         (= d (mapv * direction [-1 -1]))))
                   [[1 0] [-1 0] [0 1] [0 -1]])))
 
-(defn manhattan-distance
-  [p1 p2]
-  (+ (abs (- (first p1) (first p2)))
-     (abs (- (second p1) (second p2)))))
-
-
 ;; https://en.wikipedia.org/wiki/A*_search_algorithm
 (defn solve-a
   {:test (fn []
@@ -42,18 +37,11 @@
   [input]
   (let [[heat-loss-map max-i max-j] (get-heat-loss-map input)
         end-position [max-i max-j]]
-    (loop [unvisited {{:position [0 0] :direction [0 1] :straight 0} 0}
+    (loop [unvisited (priority-map {:position [0 0] :direction [0 1] :straight 0} 0)
            visited {}]
-      (let [next-to-process (first (reduce-kv (fn [[best-k best-estimate] k v]
-                                                (let [estimated-cost (+ v (manhattan-distance (:position k) end-position))]
-                                                  (if (< estimated-cost best-estimate)
-                                                    [k estimated-cost]
-                                                    [best-k best-estimate])))
-                                              [nil ##Inf]
-                                              unvisited))
-            cost-so-far (get unvisited next-to-process)
-            unvisited (dissoc unvisited next-to-process)]
-        ;(println (count unvisited) (count visited))
+      (let [[next-to-process cost-so-far] (peek unvisited)
+            unvisited (pop unvisited)]
+        (println (count unvisited) (count visited))
         (if (= (:position next-to-process) end-position)
           cost-so-far
           (let [neighbours (->> (get-neighbours heat-loss-map next-to-process)
@@ -98,18 +86,11 @@
   [input]
   (let [[heat-loss-map max-i max-j] (get-heat-loss-map input)
         end-position [max-i max-j]]
-    (loop [unvisited {{:position [0 0] :direction [0 1] :straight 0} 0}
+    (loop [unvisited (priority-map {:position [0 0] :direction [0 1] :straight 0} 0)
            visited {}]
-      (let [next-to-process (first (reduce-kv (fn [[best-k best-estimate] k v]
-                                                (let [estimated-cost (+ v (manhattan-distance (:position k) end-position))]
-                                                  (if (< estimated-cost best-estimate)
-                                                    [k estimated-cost]
-                                                    [best-k best-estimate])))
-                                              [nil ##Inf]
-                                              unvisited))
-            cost-so-far (get unvisited next-to-process)
-            unvisited (dissoc unvisited next-to-process)]
-        ;(println (count unvisited) (count visited))
+      (let [[next-to-process cost-so-far] (peek unvisited)
+            unvisited (pop unvisited)]
+        (println (count unvisited) (count visited))
         (if (= (:position next-to-process) end-position)
           cost-so-far
           (let [neighbours (->> (get-neighbours-b heat-loss-map next-to-process)
@@ -134,9 +115,9 @@
 (comment
   (time (solve-a input))
   ;; 1128
-  ;; "Elapsed time: 180491.276504 msecs"
+  ;; "Elapsed time: 6682.026417 msecs"
 
   (time (solve-b input))
   ;; 1268
-  ;; "Elapsed time: 1516349.454443 msecs"
+  ;; "Elapsed time: 52681.563667 msecs"
   )
