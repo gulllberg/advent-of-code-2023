@@ -53,7 +53,7 @@
                                               unvisited))
             cost-so-far (get unvisited next-to-process)
             unvisited (dissoc unvisited next-to-process)]
-        (println (count unvisited) (count visited))
+        ;(println (count unvisited) (count visited))
         (if (= (:position next-to-process) end-position)
           cost-so-far
           (let [neighbours (->> (get-neighbours heat-loss-map next-to-process)
@@ -93,7 +93,8 @@
 
 (defn solve-b
   {:test (fn []
-           (is= (solve-b test-input) 94))}
+           (is= (solve-b test-input) 94)
+           (is= (solve-b "111111111111\n999999999991\n999999999991\n999999999991\n999999999991") 71))}
   [input]
   (let [[heat-loss-map max-i max-j] (get-heat-loss-map input)
         end-position [max-i max-j]]
@@ -108,7 +109,7 @@
                                               unvisited))
             cost-so-far (get unvisited next-to-process)
             unvisited (dissoc unvisited next-to-process)]
-        (println (count unvisited) (count visited))
+        ;(println (count unvisited) (count visited))
         (if (= (:position next-to-process) end-position)
           cost-so-far
           (let [neighbours (->> (get-neighbours-b heat-loss-map next-to-process)
@@ -121,7 +122,9 @@
                                                                           (min a (get unvisited (assoc neighbour :straight s) ##Inf)))
                                                                         old-cost))
                                    new-cost (+ cost-so-far (get heat-loss-map (:position neighbour)))]
-                               (if (< new-cost best-cost-less-straight)
+                               (if (and (< new-cost best-cost-less-straight)
+                                        (or (not= end-position (:position neighbour))
+                                            (>= (:straight neighbour) 4)))
                                  (assoc unvisited neighbour new-cost)
                                  unvisited)))
                            unvisited
