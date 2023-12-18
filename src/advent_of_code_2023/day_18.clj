@@ -62,61 +62,37 @@
     "3" [-1 0]
     "1" [1 0]))
 
-(defn count-interior
-  [corners]
-  (let [sorted-corners (sort (fn [a b]
-                               (let [f-a (first a)
-                                     f-b (first b)]
-                                 (if (= f-a f-b)
-                                   (< (second a) (second b))
-                                   (< f-a f-b))))
-                         corners)]
-    sorted-corners
-    (loop [n 0
-           corners sorted-corners]
-      (let [i (ffirst corners)
-            on-current-row (take-while (fn [c]
-                                         (= (first c) i))
-                                       corners)
-            the-rest (drop-while (fn [c]
-                                   (= (first c) i))
-                                 corners)]
-        (reduce (fn [a [[_ j1] [_ j2]]]
-                  (+ a (- j2 j1)))
-                0
-                (partition 2 on-current-row)) ))))
-
-
-
-(defn hej
+;; https://en.wikipedia.org/wiki/Shoelace_formula
+(defn shoelace
   {:test (fn []
-           (is= (hej test-input) 62))}
-  [input]
-  (->> (clojure.string/split-lines input)
-       (map parse-line)
-       (reduce (fn [[pos a] [dir steps _]]
-                 (let [new-pos (map + pos (map * (dir->dir dir) [steps steps]))]
-                   [new-pos (conj a new-pos)]))
-               [[0 0] []])
-       (second)
-       (count-interior)))
+           (is= (shoelace [[0 0] [2 0] [2 2] [0 2] [0 0]]) 4)
+           (is= (shoelace [[0 0] [0 6] [5 6] [5 4] [7 4] [7 6] [9 6] [9 1] [7 1] [7 0] [5 0] [5 2] [2 2] [2 0] [0 0]]) 42))}
+  [points]
+  (loop [res 0
+         p1 (first points)
+         p2 (second points)
+         the-rest (drop 2 points)]
+    (let [this-res (- (* (first p1) (second p2))
+                      (* (second p1) (first p2)))
+          new-res (+ res this-res)]
+      (if (empty? the-rest)
+        (abs (/ new-res 2))
+        (recur new-res p2 (first the-rest) (drop 1 the-rest))))))
 
 (defn solve-b
-  ;{:test (fn []
-  ;         (is= (solve-b test-input) 952408144115))}
+  {:test (fn []
+           (is= (solve-b test-input) 952408144115))}
   [input]
-  (->> (clojure.string/split-lines input)
-       (map parse-line)
-       (reduce (fn [[pos a] [_ _ colour]]
-                 (let [steps (Integer/parseInt (subs colour 0 5) 16)
-                       dir (dir->dir-b (subs colour 5))
-                       new-pos (map + pos (map * dir [steps steps]))]
-                   [new-pos (conj a new-pos)]))
-               [[0 0] []])
-       (second)
-       (sort (fn [a b]
-               (< (first a) (first b))))
-       (count-interior)))
+  (let [[_ points exterior-length] (->> (clojure.string/split-lines input)
+             (map parse-line)
+             (reduce (fn [[pos points exterior-length] [_ _ colour]]
+                       (let [steps (Integer/parseInt (subs colour 0 5) 16)
+                             dir (dir->dir-b (subs colour 5))
+                             new-pos (map + pos (map * dir [steps steps]))]
+                         [new-pos (conj points new-pos) (+ exterior-length steps)]))
+                     [[0 0] [[0 0]] 0]))]
+    ;; Half of exterior area included in shoelace. half from exterior length, and + 1 for the 4 corner points
+    (+ 1 (/ exterior-length 2) (shoelace points))))
 
 (comment
   (time (solve-a input))
@@ -124,6 +100,6 @@
   ;; "Elapsed time: 2803.676581 msecs"
 
   (time (solve-b input))
-  ;;
-  ;;
+  ;; 177243763226648
+  ;; "Elapsed time: 8.244699 msecs"
   )
