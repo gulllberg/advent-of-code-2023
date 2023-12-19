@@ -55,11 +55,112 @@
             0
             (clojure.string/split-lines ratings))))
 
+;(def fns {:in  (fn [x-range m-range a-range s-range]
+;                 (let [[truthy-range falsy-range] (get-new-ranges s-range 1351 "<")]
+;                   [{:x x-range :m m-range :a a-range :s truthy-range :fn-to-run :px}
+;                    {:x x-range :m m-range :a a-range :s falsy-range :fn-to-run :qqz}]))
+;          :qqz (fn [x-range m-range a-range s-range]
+;                 (let [[truthy-range falsy-range] (get-new-ranges s-range 2770 ">")]
+;                   (let [[truthy-range-2 falsy-range-2] (get-new-ranges m-range 181 "<")]
+;                     [{:x x-range :m m-range :a a-range :s truthy-range :fn-to-run :qs}
+;                      {:x x-range :m truthy-range-2 :a a-range :s falsy-range :fn-to-run :hdj}
+;                      {:x x-range :m falsy-range-2 :a a-range :s falsy-range :fn-to-run :R}])))})
+
+; qqz{s>2770:qs,m<1801:hdj,R}
+; in{s<1351:px,qqz}
+;(defn run-one-fn
+;  {:test (fn []
+;           (is= (run-one-fn [{:x [1 4000] :m [1 4000] :a [1 4000] :s [1 4000] :fn-to-run :in}])
+;                [{:x [1 4000] :m [1 4000] :a [1 4000] :s [1 1350] :fn-to-run :px}
+;                 {:x [1 4000] :m [1 4000] :a [1 4000] :s [1351 4000] :fn-to-run :qqz}]))}
+;  [intervals]
+;  (reduce (fn [a interval]
+;            (let [fn-to-run (get fns (:fn-to-run interval))]
+;              (concat a (fn-to-run (:x interval) (:m interval) (:a interval) (:s interval)))))
+;          []
+;          intervals))
+
+(defn get-conditions-state
+  [conditions]
+  (reduce (fn [a line]
+            (let [[_ id conditions] (re-find #"(\w+)\{(.*)\}" line)]
+              (assoc a (keyword id) conditions)))
+          {}
+          (clojure.string/split-lines conditions)))
+(defn get-truthy-falsy-ranges
+  {:test (fn []
+           (is= (get-truthy-falsy-ranges [1 4000] 1351 "<")
+                [[1 1350] [1351 4000]])
+           (is= (get-truthy-falsy-ranges [1 1000] 1351 ">")
+                [nil [1 1000]])
+           (is= (get-truthy-falsy-ranges [1 1000] 777 ">")
+                [[778 1000] [1 777]]))}
+  [[range-start range-end] value op]
+  (if (= op "<")
+    (cond
+      (< range-end value)
+      [[range-start range-end] nil]
+
+      (< value range-start)
+      [nil [range-start range-end]]
+
+      :else [[range-start (dec value)] [value range-end]])
+    (cond
+      (> range-start value)
+      [[range-start range-end] nil]
+
+      (> value range-end)
+      [nil [range-start range-end]]
+
+      :else [[(inc value) range-end] [range-start value]])))
+
+(defn process-one-conditions
+  {:test (fn []
+           (is= (process-one-conditions "s<1351:px,qqz" {:x [1 4000] :m [1 4000] :a [1 4000] :s [1 4000]})
+                [{:x [1 4000] :m [1 4000] :a [1 4000] :s [1 1350] :fn-to-run :px}
+                 {:x [1 4000] :m [1 4000] :a [1 4000] :s [1351 4000] :fn-to-run :qqz}])
+           (is= (process-one-conditions "s>2770:qs,m<1801:hdj,R" {:x [1 4000] :m [1 4000] :a [1 4000] :s [1351 4000]})
+                [{:x [1 4000] :m [1 4000] :a [1 4000] :s [2771 4000] :fn-to-run :qs}
+                 {:x [1 4000] :m [1 1800] :a [1 4000] :s [1351 2770] :fn-to-run :hdj}
+                 {:x [1 4000] :m [1801 4000] :a [1 4000] :s [1351 2770] :fn-to-run :R}]))}
+  [conditions interval]
+  (reduce (fn [[finished processing] condition]
+            (if (re-find #"^\w+$" condition)
+              (conj finished (assoc processing :fn-to-run (keyword condition)))
+              (let [[_ v op num res] (re-find #"(\w)(<|>)(\d+):(\w+)" condition)
+                    [truthy-range falsy-range] (get-truthy-falsy-ranges (get processing (keyword v)) (read-string num) op)]
+                (if-not falsy-range
+                  (reduced (conj finished (assoc processing (keyword v) truthy-range) :fn-to-run (keyword res)))
+
+                  [(if truthy-range (conj finished (assoc processing (keyword v) truthy-range :fn-to-run (keyword res))) finished)
+                   (assoc processing (keyword v) falsy-range)]))))
+          [[] interval]
+          (clojure.string/split conditions #",")))
+
+(defn get-number-accepted-from-ranges
+  [interval]
+  (->> (vals interval)
+       (map (fn [[a b]]
+              (inc (- b a))))
+       (reduce *)))
+
 (defn solve-b
   {:test (fn []
            (is= (solve-b test-input) 167409079868000))}
   [input]
-  952408144115)
+  (let [conditions (first (clojure.string/split input #"\n\n"))
+        conditions-state (get-conditions-state conditions)]
+    (loop [intervals [{:x [1 4000] :m [1 4000] :a [1 4000] :s [1 4000] :fn-to-run :in}]
+           num-accepted 0]
+      (if (empty? intervals)
+        num-accepted
+        (let [[interval & intervals] intervals
+              fn-to-run (get interval :fn-to-run)]
+          (condp = fn-to-run
+            :R (recur intervals num-accepted)
+            :A (recur intervals (+ num-accepted (get-number-accepted-from-ranges (dissoc interval :fn-to-run))))
+            (recur (concat intervals (process-one-conditions (get conditions-state fn-to-run) interval))
+                   num-accepted)))))))
 
 (comment
   (time (solve-a input))
@@ -67,6 +168,6 @@
   ;; "Elapsed time: 18.701917 msecs"
 
   (time (solve-b input))
-  ;;
-  ;;
+  ;; 125317461667458
+  ;; "Elapsed time: 25.511445 msecs"
   )
