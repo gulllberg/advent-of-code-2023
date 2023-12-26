@@ -118,9 +118,9 @@
   )
 
 (def test-graph {0 [1 2 3]
-            1      [0 3]
-            2      [0 3]
-            3      [0 1 2]})
+                 1 [0 3]
+                 2 [0 3]
+                 3 [0 1 2]})
 (defn contract
   {:test (fn []
            (is= (contract test-graph 1 3)
@@ -141,15 +141,16 @@
                                      (conj a t)))
                                  []
                                  (concat u-edges v-edges))]
-    (reduce-kv (fn [a k e]
-                 (assoc a k (map (fn [x]
+    (reduce (fn [a t]
+              (update a t (fn [ns]
+                            (map (fn [n]
                                    ;; Transform edges to v to u instead (the contracted node)
-                                   (if (= x v)
+                                   (if (= n v)
                                      u
-                                     x))
-                                    e)))
-               {}
-               (assoc (dissoc graph u v) u contracted-edges))))
+                                     n))
+                                 ns))))
+            (assoc (dissoc graph u v) u contracted-edges)
+            v-edges)))
 
 (defn karger-min-cut
   [graph]
@@ -173,8 +174,8 @@
 
 (comment
   (time (solve-with-karger input))
-  ; {"dkc" ("jhr" "jhr" "jhr"), "jhr" ("dkc" "dkc" "dkc")}
-  ; "Elapsed time: 15298.461 msecs"
+  ; => {"znh" ("pch" "pch" "pch"), "pch" ("znh" "znh" "znh")}
+  ; "Elapsed time: Maybe 1s on average (it is stochastic)
   ; This is just time to find cut, then need to find size of two disjoint graphs
   ; (Also this implementation renames nodes, so don't know what actual cut was)
   )
