@@ -124,13 +124,13 @@
 (defn contract
   {:test (fn []
            (is= (contract test-graph 1 3)
-                {0 [1 2 1]
-                 1 [0 0 2]
-                 2 [0 1]})
+                {0 ["1-3" 2 "1-3"]
+                 "1-3" [0 0 2]
+                 2 [0 "1-3"]})
            (is= (contract test-graph 3 0)
-                {1 [3 3]
-                 2 [3 3]
-                 3 [1 2 1 2]}))}
+                {1 ["3-0" "3-0"]
+                 2 ["3-0" "3-0"]
+                 "3-0" [1 2 1 2]}))}
   [graph u v]
   (let [u-edges (graph u)
         v-edges (graph v)
@@ -140,17 +140,21 @@
                                      a
                                      (conj a t)))
                                  []
-                                 (concat u-edges v-edges))]
+                                 (concat u-edges v-edges))
+        ;; To be able to tell which vertices have been contracted together
+        uv (str u "-" v)]
     (reduce (fn [a t]
               (update a t (fn [ns]
                             (map (fn [n]
-                                   ;; Transform edges to v to u instead (the contracted node)
-                                   (if (= n v)
-                                     u
+                                   ;; Transform edges to u or v to uv instead (the contracted node)
+                                   (if (or (= n u)
+                                           (= n v))
+                                     uv
                                      n))
                                  ns))))
-            (assoc (dissoc graph u v) u contracted-edges)
-            v-edges)))
+            (assoc (dissoc graph u v) uv contracted-edges)
+            ;; Since we are renaming u, we need to check all contracted edges, not just v-edges
+            contracted-edges)))
 
 (defn karger-min-cut
   [graph]
@@ -163,19 +167,27 @@
 
 (defn solve-with-karger
   {:test (fn []
-           (is (solve-with-karger test-input)))}
+           (is= 54 (solve-with-karger test-input)))}
   [input]
-  (let [graph (create-state input)]
-    (loop []
-      (let [cut (karger-min-cut graph)]
-        (if (= 3 (count (first (vals cut))))
-          cut
-          (recur))))))
+  (let [graph (create-state input)
+        [i cut] (loop [i 1]
+                  (let [cut (karger-min-cut graph)]
+                    (if (= 3 (count (first (vals cut))))
+                      [i cut]
+                      (recur (inc i)))))]
+    (println "n iters to get cut" i)
+    (->> cut
+          (keys)
+          (map (fn [k] (count (clojure.string/split k #"-"))))
+          (reduce *))))
 
 (comment
   (time (solve-with-karger input))
-  ; => {"znh" ("pch" "pch" "pch"), "pch" ("znh" "znh" "znh")}
-  ; "Elapsed time: Maybe 1s on average (it is stochastic)
-  ; This is just time to find cut, then need to find size of two disjoint graphs
-  ; (Also this implementation renames nodes, so don't know what actual cut was)
+  ; => 580800
+  ; Time is stochastic, normal is a couple of seconds
+  ; (With implementation that only looked at size of cut the runtime was maybe 1s on average)
+  ; n iters to get cut 1
+  ; "Elapsed time: 243.255833 msecs"
+  ; n iters to get cut 27
+  ; "Elapsed time: 6319.1715 msecs"
   )
