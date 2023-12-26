@@ -116,3 +116,65 @@
   ;; 580800
   ;; "Elapsed time: 2971.056125 msecs"
   )
+
+(def test-graph {0 [1 2 3]
+            1      [0 3]
+            2      [0 3]
+            3      [0 1 2]})
+(defn contract
+  {:test (fn []
+           (is= (contract test-graph 1 3)
+                {0 [1 2 1]
+                 1 [0 0 2]
+                 2 [0 1]})
+           (is= (contract test-graph 3 0)
+                {1 [3 3]
+                 2 [3 3]
+                 3 [1 2 1 2]}))}
+  [graph u v]
+  (let [u-edges (graph u)
+        v-edges (graph v)
+        contracted-edges (reduce (fn [a t]
+                                   (if (or (= t u)
+                                           (= t v))
+                                     a
+                                     (conj a t)))
+                                 []
+                                 (concat u-edges v-edges))]
+    (reduce-kv (fn [a k e]
+                 (assoc a k (map (fn [x]
+                                   ;; Transform edges to v to u instead (the contracted node)
+                                   (if (= x v)
+                                     u
+                                     x))
+                                    e)))
+               {}
+               (assoc (dissoc graph u v) u contracted-edges))))
+
+(defn karger-min-cut
+  [graph]
+  (loop [current-graph graph]
+    (if (= 2 (count current-graph))
+      current-graph
+      (let [u (rand-nth (keys current-graph))
+            v (rand-nth (current-graph u))]
+        (recur (contract current-graph u v))))))
+
+(defn solve-with-karger
+  {:test (fn []
+           (is (solve-with-karger test-input)))}
+  [input]
+  (let [graph (create-state input)]
+    (loop []
+      (let [cut (karger-min-cut graph)]
+        (if (= 3 (count (first (vals cut))))
+          cut
+          (recur))))))
+
+(comment
+  (time (solve-with-karger input))
+  ; {"dkc" ("jhr" "jhr" "jhr"), "jhr" ("dkc" "dkc" "dkc")}
+  ; "Elapsed time: 15298.461 msecs"
+  ; This is just time to find cut, then need to find size of two disjoint graphs
+  ; (Also this implementation renames nodes, so don't know what actual cut was)
+  )
